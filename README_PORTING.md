@@ -1,15 +1,32 @@
-# odrive_ros
-ROS driver for the [ODrive motor driver](https://odriverobotics.com/)
+# odrive_ros for spin_hokuyo
 
-This is a basic first pass at a ROS driver. It's Python-based, so not super-fast, but it'll get you started. Maybe in time this will have an optimised C++ version, but I woudn't count on it anytime soon. ;)
+dynamixel内部包含串口驱动和电机控制，串口发布motor_states作为rostopic监控；电机控制订阅外部的Twist命令，发给电机进行控制，同时输出JointState，TF给pcl registration和point cloud采集程序
 
-Future plans do include: 
+hokuyo_ws下其他程序接受JointState，TF，进行点云采集和粗对准，并输出为MAP
 
-- pull encoder parameter back from ODrive rather than specifying it manually
-- publishing odometry back to ROS
+所以启动方法一目了然，给rostopic中的Twist赋值即可，如给一个10Hz更新率，2.3m/s 的速度：rostopic pub /cmd_vel geometry_msgs/Twist -r 10 -- '[2.3, 0.0, 0.0]' '[0.0, 0.0, 0.1]'
 
-Feedback, issues and pull requests welcome.
+本程序odrive_ros完成了对JointState和TF的打包，在使用的时候需要把dynamixel中的dynamixel_msg文件夹保留，里面有这些topic的信息。
 
+## ISSUE
+这个信息是pip install odrive版本内部与现有python版本不一致导致的，但不会出错
+```
+Exception in thread Thread-7:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/threading.py", line 801, in __bootstrap_inner
+    self.run()
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/timer.py", line 235, in run
+    self._callback(TimerEvent(last_expected, last_real, current_expected, current_real, last_duration))
+  File "/home/parallels/catkin_ws/src/odrive_ros/src/odrive_ros/odrive_node.py", line 362, in timer_odometry
+    vel_l = self.driver.left_axis.encoder.vel_estimate  # units: encoder counts/s
+  File "/usr/local/lib/python2.7/dist-packages/fibre/remote_object.py", line 239, in __getattribute__
+    return attr.get_value()
+  File "/usr/local/lib/python2.7/dist-packages/fibre/remote_object.py", line 72, in get_value
+    buffer = self._parent.__channel__.remote_endpoint_operation(self._id, None, True, self._codec.get_length())
+  File "/usr/local/lib/python2.7/dist-packages/fibre/protocol.py", line 309, in remote_endpoint_operation
+    raise ChannelBrokenException()
+ChannelBrokenException
+```
 ## Usage
 
 As of September 7, 2018 the main ODrive repository doesn't support Python 2.7, so you will need to ensure the version you install has [my compatibility patch](https://github.com/madcowswe/ODrive/pull/199). Said patch is also is a bit rough around the edges, you will need to use the odrivetool for configuration according to the ODrive setup docs with `python2 odrivetool` instead of running it directly.
